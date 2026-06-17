@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ビジョントレーニング</title>
+<style>
+  :root {
+    --purple-light: #EEEDFE;
+    --purple-mid: #7F77DD;
+    --purple: #534AB7;
+    --purple-dark: #3C3489;
+    --teal-light: #E1F5EE;
+    --teal-mid: #1D9E75;
+    --teal: #0F6E56;
+    --coral-light: #FAECE7;
+    --coral: #D85A30;
+    --amber-light: #FAEEDA;
+    --amber: #BA7517;
+    --text: #1a1a2e;
+    --text-sub: #555570;
+    --text-hint: #9090aa;
+    --bg: #f8f8fc;
+    --bg2: #ffffff;
+    --border: #e0e0f0;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* ── screens ── */
+  .screen { display: none; padding: 24px 20px; max-width: 480px; margin: 0 auto; min-height: 100vh; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* ── API screen ── */
+  .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; margin-top: 16px; }
+  .logo-eye { width: 40px; height: 40px; background: var(--purple); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .logo-eye svg { width: 22px; height: 22px; }
+  .logo-title { font-size: 18px; font-weight: 600; color: var(--text); letter-spacing: -0.3px; }
+  .logo-sub { font-size: 12px; color: var(--text-hint); }
+  .hero-text { margin-bottom: 32px; }
+  .hero-text h1 { font-size: 26px; font-weight: 700; line-height: 1.3; margin-bottom: 10px; letter-spacing: -0.5px; }
+  .hero-text p { font-size: 14px; color: var(--text-sub); line-height: 1.7; }
+  .field-label { font-size: 12px; color: var(--text-hint); margin-bottom: 6px; display: block; letter-spacing: 0.3px; }
+  .field-input { width: 100%; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; background: var(--bg2); color: var(--text); outline: none; transition: border-color 0.2s; }
+  .field-input:focus { border-color: var(--purple-mid); }
+  .field-note { font-size: 12px; color: var(--text-hint); margin-top: 6px; line-height: 1.5; }
+  .btn-primary { width: 100%; padding: 16px; background: var(--purple); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.15s; margin-top: 8px; }
+  .btn-primary:hover { background: var(--purple-dark); }
+  .btn-primary:disabled { opacity: 0.4; cursor: default; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-sub); border-radius: var(--radius-sm); padding: 10px 20px; font-size: 13px; cursor: pointer; }
+  .btn-ghost:hover { background: var(--bg); }
+
+  /* ── tab bar ── */
+  .tabbar { display: flex; background: var(--bg2); border-top: 1px solid var(--border); position: sticky; bottom: 0; z-index: 10; }
+  .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 0 14px; font-size: 10px; color: var(--text-hint); cursor: pointer; border: none; background: transparent; transition: color 0.15s; }
+  .tab.active { color: var(--purple); }
+  .tab svg { width: 22px; height: 22px; }
+
+  /* ── progress dots ── */
+  .progress-row { display: flex; gap: 6px; margin-bottom: 28px; }
+  .progress-dot { height: 4px; flex: 1; border-radius: 2px; background: var(--border); transition: background 0.3s; }
+  .progress-dot.done { background: var(--teal-mid); }
+  .progress-dot.curr { background: var(--purple-mid); }
+
+  /* ── questionnaire ── */
+  .q-step { display: none; }
+  .q-step.active { display: block; flex: 1; }
+  .q-num { font-size: 12px; color: var(--text-hint); margin-bottom: 6px; }
+  .q-title { font-size: 20px; font-weight: 700; margin-bottom: 24px; line-height: 1.3; letter-spacing: -0.3px; }
+  .q-options { display: flex; flex-direction: column; gap: 10px; }
+  .q-opt { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1.5px solid var(--border); border-radius: var(--radius); background: var(--bg2); cursor: pointer; transition: all 0.15s; }
+  .q-opt:hover { border-color: var(--purple-mid); background: var(--purple-light); }
+  .q-opt.sel { border-color: var(--purple); background: var(--purple-light); }
+  .q-opt-icon { width: 36px; height: 36px; border-radius: 50%; background: var(--bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px; }
+  .q-opt.sel .q-opt-icon { background: var(--purple-light); }
+  .q-opt-label { font-size: 14px; font-weight: 500; }
+  .q-opt-sub { font-size: 12px; color: var(--text-hint); margin-top: 2px; }
+  .q-nav { display: flex; gap: 10px; margin-top: 28px; }
+  .q-nav .btn-ghost { flex: 0 0 80px; }
+  .q-nav .btn-primary { flex: 1; margin-top: 0; }
+
+  /* ── loading ── */
+  .loading-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
+  .spinner { width: 44px; height: 44px; border: 3px solid var(--border); border-top-color: var(--purple); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-label { font-size: 14px; color: var(--text-hint); text-align: center; }
+
+  /* ── protocol result ── */
+  .result-header { margin-bottom: 20px; }
+  .result-badge { display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 20px; margin-bottom: 8px; }
+  .badge-easy { background: var(--teal-light); color: var(--teal); }
+  .badge-med { background: var(--amber-light); color: var(--amber); }
+  .badge-hard { background: var(--coral-light); color: var(--coral); }
+  .result-title { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; line-height: 1.2; }
+  .result-overview { font-size: 14px; color: var(--text-sub); line-height: 1.7; }
+  .result-meta { display: flex; gap: 16px; margin-top: 12px; }
+  .result-meta-item { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text-hint); }
+  .section-head { font-size: 11px; font-weight: 600; color: var(--text-hint); letter-spacing: 0.8px; text-transform: uppercase; margin: 24px 0 10px; }
+  .schedule-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 4px; }
+  .sched-day { text-align: center; }
+  .sched-name { font-size: 11px; color: var(--text-hint); margin-bottom: 4px; }
+  .sched-tag { font-size: 10px; padding: 4px 2px; border-radius: 6px; font-weight: 600; }
+  .sched-on { background: var(--purple-light); color: var(--purple); }
+  .sched-off { background: var(--bg); color: var(--text-hint); }
+  .ex-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; }
+  .ex-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .ex-name { font-size: 15px; font-weight: 600; }
+  .ex-dur { font-size: 12px; color: var(--text-hint); }
+  .ex-desc { font-size: 13px; color: var(--text-sub); line-height: 1.6; margin-bottom: 6px; }
+  .ex-benefit { font-size: 12px; color: var(--teal-mid); display: flex; align-items: center; gap: 4px; }
+  .tips-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .tips-list li { font-size: 13px; color: var(--text-sub); line-height: 1.6; padding-left: 16px; position: relative; }
+  .tips-list li::before { content: '・'; position: absolute; left: 0; color: var(--purple-mid); }
+  .caution-box { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 12px; color: var(--text-hint); line-height: 1.6; margin-top: 12px; margin-bottom: 24px; }
+
+  /* ── picture book setup ── */
+  .pb-hero { background: var(--purple-light); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; text-align: center; }
+  .pb-hero-title { font-size: 18px; font-weight: 700; color: var(--purple-dark); margin-bottom: 4px; }
+  .pb-hero-sub { font-size: 13px; color: var(--purple); }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .chip { padding: 8px 16px; border: 1.5px solid var(--border); border-radius: 20px; font-size: 13px; background: var(--bg2); color: var(--text-sub); cursor: pointer; transition: all 0.15s; }
+  .chip:hover { border-color: var(--purple-mid); }
+  .chip.sel { background: var(--purple-light); border-color: var(--purple); color: var(--purple-dark); font-weight: 500; }
+  .pb-field { margin-bottom: 20px; }
+
+  /* ── book viewer ── */
+  .book-cover { background: var(--purple-light); border-radius: var(--radius); padding: 28px 20px; text-align: center; margin-bottom: 16px; }
+  .book-cover-title { font-size: 20px; font-weight: 700; color: var(--purple-dark); margin: 12px 0 4px; }
+  .book-cover-tag { font-size: 13px; color: var(--purple); }
+  .book-spread { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; }
+  .book-illus { width: 100%; height: 200px; display: flex; align-items: center; justify-content: center; }
+  .book-text { padding: 20px 18px; }
+  .book-chapter { display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 20px; background: var(--purple-light); color: var(--purple); margin-bottom: 8px; font-weight: 500; }
+  .book-page-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; line-height: 1.3; }
+  .book-story { font-size: 14px; color: var(--text-sub); line-height: 1.9; margin-bottom: 14px; }
+  .book-ex { border-left: 3px solid var(--purple-mid); padding: 10px 12px; background: var(--purple-light); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+  .book-ex-name { font-size: 13px; font-weight: 600; color: var(--purple-dark); margin-bottom: 3px; }
+  .book-ex-how { font-size: 12px; color: var(--purple); }
+  .book-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .book-nav-btn { padding: 10px 20px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: transparent; font-size: 13px; color: var(--text-sub); cursor: pointer; }
+  .book-nav-btn:disabled { opacity: 0.3; cursor: default; }
+  .book-page-ind { font-size: 13px; color: var(--text-hint); }
+  .restart-btn { display: block; width: 100%; padding: 12px; text-align: center; background: transparent; border: 1px solid var(--border); color: var(--text-hint); border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; margin-bottom: 32px; }
+
+  /* ── settings ── */
+  .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .settings-label { font-size: 14px; }
+  .settings-val { font-size: 13px; color: var(--text-hint); }
+  .settings-note { font-size: 12px; color: var(--text-hint); line-height: 1.6; margin-top: 20px; }
+  .danger-btn { color: var(--coral); border-color: var(--coral-light); }
+  .danger-btn:hover { background: var(--coral-light); }
+
+  /* ── error ── */
+  .error-box { background: #fff3f3; border: 1px solid #f7c1c1; border-radius: var(--radius-sm); padding: 12px 14px; font-size: 13px; color: #a32d2d; line-height: 1.6; margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<!-- ════════ API KEY SCREEN ════════ -->
+<div class="screen active" id="screen-api">
+  <div class="logo">
+    <div class="logo-eye">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <ellipse cx="12" cy="12" rx="10" ry="6"/><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="1" fill="#fff"/>
+      </svg>
+    </div>
+    <div><div class="logo-title">ビジョントレーニング</div><div class="logo-sub">AI パーソナルコーチ</div></div>
+  </div>
+  <div class="hero-text">
+    <h1>目のチカラを<br>引き出そう</h1>
+    <p>問診に答えるだけで、あなただけのヴィジョントレーニングプロトコルと、子ども向け絵本を自動生成します。</p>
+  </div>
+  <div class="pb-field" style="margin-bottom:12px;">
+    <label class="field-label">Anthropic API キー</label>
+    <input class="field-input" type="password" id="api-key-input" placeholder="AIza..." autocomplete="off">
+    <p class="field-note">キーはお使いの端末のみに保存されます。<br><a href="https://aistudio.google.com/apikey" style="color:var(--purple);">aistudio.google.com</a> で無料取得できます。</p>
+  </div>
+  <div id="api-error"></div>
+  <button class="btn-primary" id="api-start-btn" onclick="startApp()">はじめる</button>
+  <div style="flex:1;"></div>
+</div>
+
+<!-- ════════ MAIN APP ════════ -->
+<div class="screen" id="screen-main">
+
+  <!-- ── TAB: QUESTIONNAIRE ── -->
+  <div id="tab-quiz" style="flex:1; display:flex; flex-direction:column;">
+    <div class="progress-row" id="quiz-progress"></div>
+
+    <!-- Step 1 -->
+    <div class="q-step active" id="qs-1">
+      <p class="q-num">質問 1 / 6</p>
+      <p class="q-title">トレーニングの目的は？</p>
+      <div class="q-options">
+        <div class="q-opt" data-val="sport" onclick="qSelect(this,1)"><div class="q-opt-icon">🏅</div><div><div class="q-opt-label">スポーツで活躍したい</div><div class="q-opt-sub">動体視力・反射神経を鍛える</div></div></div>
+        <div class="q-opt" data-val="fatigue" onclick="qSelect(this,1)"><div class="q-opt-icon">👁️</div><div><div class="q-opt-label">目の疲れを改善したい</div><div class="q-opt-sub">眼精疲労・ドライアイ対策</div></div></div>
+        <div class="q-opt" data-val="study" onclick="qSelect(this,1)"><div class="q-opt-icon">📚</div><div><div class="q-opt-label">学習・集中力を上げたい</div><div class="q-opt-sub">読書速度・集中持続をサポート</div></div></div>
+        <div class="q-opt" data-val="general" onclick="qSelect(this,1)"><div class="q-opt-icon">✨</div><div><div class="q-opt-label">目の健康を全般的に保ちたい</div><div class="q-opt-sub">予防・維持が目的</div></div></div>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="q-step" id="qs-2">
+      <p class="q-num">質問 2 / 6</p>
+      <p class="q-title">年齢を教えてください</p>
+      <div class="q-options">
+        <div class="q-opt" data-val="child" onclick="qSelect(this,2)"><div class="q-opt-icon">🧒</div><div><div class="q-opt-label">6〜12歳（小学生）</div></div></div>
+        <div class="q-opt" data-val="teen" onclick="qSelect(this,2)"><div class="q-opt-icon">🧑</div><div><div class="q-opt-label">13〜18歳（中高生）</div></div></div>
+        <div class="q-opt" data-val="adult" onclick="qSelect(this,2)"><div class="q-opt-icon">👤</div><div><div class="q-opt-label">19〜49歳（成人）</div></div></div>
+        <div class="q-opt" data-val="senior" onclick="qSelect(this,2)"><div class="q-opt-icon">🧓</div><div><div class="q-opt-label">50歳以上（シニア）</div></div></div>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="q-step" id="qs-3">
+      <p class="q-num">質問 3 / 6</p>
+      <p class="q-title">視力の状態は？</p>
+      <div class="q-options">
+        <div class="q-opt" data-val="normal" onclick="qSelect(this,3)"><div class="q-opt-icon">👁️</div><div><div class="q-opt-label">裸眼で問題なし</div></div></div>
+        <div class="q-opt" data-val="glasses" onclick="qSelect(this,3)"><div class="q-opt-icon">👓</div><div><div class="q-opt-label">近視・遠視（メガネ／コンタクト）</div></div></div>
+        <div class="q-opt" data-val="presbyopia" onclick="qSelect(this,3)"><div class="q-opt-icon">🔍</div><div><div class="q-opt-label">老眼（近くが見えにくい）</div></div></div>
+        <div class="q-opt" data-val="astigmatism" onclick="qSelect(this,3)"><div class="q-opt-icon">🔵</div><div><div class="q-opt-label">乱視がある</div></div></div>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="q-step" id="qs-4">
+      <p class="q-num">質問 4 / 6</p>
+      <p class="q-title">1日のスクリーン時間は？</p>
+      <div class="q-options">
+        <div class="q-opt" data-val="low" onclick="qSelect(this,4)"><div class="q-opt-icon">📵</div><div><div class="q-opt-label">2時間未満</div><div class="q-opt-sub">比較的スクリーンが少ない</div></div></div>
+        <div class="q-opt" data-val="med" onclick="qSelect(this,4)"><div class="q-opt-icon">💻</div><div><div class="q-opt-label">2〜6時間</div><div class="q-opt-sub">平均的な使用量</div></div></div>
+        <div class="q-opt" data-val="high" onclick="qSelect(this,4)"><div class="q-opt-icon">🖥️</div><div><div class="q-opt-label">6時間以上</div><div class="q-opt-sub">デスクワーク・ゲーマーなど</div></div></div>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="q-step" id="qs-5">
+      <p class="q-num">質問 5 / 6</p>
+      <p class="q-title">1日に使える時間は？</p>
+      <div class="q-options">
+        <div class="q-opt" data-val="short" onclick="qSelect(this,5)"><div class="q-opt-icon">⚡</div><div><div class="q-opt-label">5〜10分</div><div class="q-opt-sub">すきま時間でサクッと</div></div></div>
+        <div class="q-opt" data-val="medium" onclick="qSelect(this,5)"><div class="q-opt-icon">🕐</div><div><div class="q-opt-label">15〜20分</div><div class="q-opt-sub">しっかり取り組む</div></div></div>
+        <div class="q-opt" data-val="long" onclick="qSelect(this,5)"><div class="q-opt-icon">🏋️</div><div><div class="q-opt-label">30分以上</div><div class="q-opt-sub">本格的にトレーニング</div></div></div>
+      </div>
+    </div>
+
+    <!-- Step 6 -->
+    <div class="q-step" id="qs-6">
+      <p class="q-num">質問 6 / 6</p>
+      <p class="q-title">トレーニング経験は？</p>
+      <div class="q-options">
+        <div class="q-opt" data-val="none" onclick="qSelect(this,6)"><div class="q-opt-icon">🌱</div><div><div class="q-opt-label">まったく初めて</div></div></div>
+        <div class="q-opt" data-val="some" onclick="qSelect(this,6)"><div class="q-opt-icon">🌿</div><div><div class="q-opt-label">少し試したことがある</div></div></div>
+        <div class="q-opt" data-val="exp" onclick="qSelect(this,6)"><div class="q-opt-icon">🌳</div><div><div class="q-opt-label">継続的に行ったことがある</div></div></div>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="q-step" id="qs-loading" style="flex:1;">
+      <div class="loading-wrap">
+        <div class="spinner"></div>
+        <p class="loading-label">AIがプロトコルを<br>作成しています...</p>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div class="q-step" id="qs-result" style="overflow-y:auto;">
+      <div id="protocol-output"></div>
+    </div>
+
+    <!-- Nav -->
+    <div class="q-nav" id="quiz-nav">
+      <button class="btn-ghost" id="q-back-btn" onclick="qBack()" disabled>戻る</button>
+      <button class="btn-primary" id="q-next-btn" onclick="qNext()" disabled style="margin-top:0;">次へ</button>
+    </div>
+  </div>
+
+  <!-- ── TAB: PICTURE BOOK ── -->
+  <div id="tab-book" style="flex:1; display:none; flex-direction:column; overflow-y:auto;">
+
+    <!-- Setup -->
+    <div id="pb-setup">
+      <div class="pb-hero">
+        <div style="font-size:40px; margin-bottom:8px;">📖</div>
+        <div class="pb-hero-title">あなただけの絵本</div>
+        <div class="pb-hero-sub">主人公を入力して絵本を作ろう</div>
+      </div>
+
+      <div class="pb-field">
+        <label class="field-label">主人公のなまえ</label>
+        <input class="field-input" type="text" id="pb-name" placeholder="例：たろう、はな" maxlength="10" oninput="pbCheck()">
+      </div>
+
+      <div class="pb-field">
+        <label class="field-label">せいべつ</label>
+        <div class="chips" id="pb-gender">
+          <div class="chip" data-val="boy" onclick="pbChip('pb-gender',this)">男の子</div>
+          <div class="chip" data-val="girl" onclick="pbChip('pb-gender',this)">女の子</div>
+          <div class="chip" data-val="any" onclick="pbChip('pb-gender',this)">どちらでも</div>
+        </div>
+      </div>
+
+      <div class="pb-field">
+        <label class="field-label">なやんでいること</label>
+        <div class="chips" id="pb-concern">
+          <div class="chip" data-val="eye_tired" onclick="pbChip('pb-concern',this)">目がつかれる</div>
+          <div class="chip" data-val="blurry" onclick="pbChip('pb-concern',this)">ぼんやりする</div>
+          <div class="chip" data-val="sport" onclick="pbChip('pb-concern',this)">スポーツで活やく</div>
+          <div class="chip" data-val="study" onclick="pbChip('pb-concern',this)">べんきょうに集中</div>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="pb-gen-btn" onclick="generateBook()" disabled>絵本を作る ✨</button>
+    </div>
+
+    <!-- Book loading -->
+    <div id="pb-loading" style="display:none; flex:1;">
+      <div class="loading-wrap" style="min-height:200px;">
+        <div class="spinner"></div>
+        <p class="loading-label">物語を作っています...</p>
+      </div>
+    </div>
+
+    <!-- Book viewer -->
+    <div id="pb-viewer" style="display:none;">
+      <div id="pb-viewer-content"></div>
+    </div>
+  </div>
+
+  <!-- ── TAB: SETTINGS ── -->
+  <div id="tab-settings" style="display:none; flex-direction:column; flex:1;">
+    <div style="margin-bottom:24px;">
+      <h2 style="font-size:20px; font-weight:700; margin-bottom:4px;">設定</h2>
+      <p style="font-size:13px; color:var(--text-hint);">アプリの設定を管理します</p>
+    </div>
+    <div class="settings-row">
+      <span class="settings-label">APIキー</span>
+      <span class="settings-val" id="settings-key-hint">••••••••</span>
+    </div>
+    <div class="settings-row">
+      <span class="settings-label">モデル</span>
+      <span class="settings-val">gemini-2.5-flash (無料枠)</span>
+    </div>
+    <div class="settings-row" style="border:none;">
+      <span class="settings-label">バージョン</span>
+      <span class="settings-val">1.0.0</span>
+    </div>
+    <button class="btn-ghost danger-btn" style="margin-top:24px;" onclick="resetApp()">ログアウト・APIキーを削除</button>
+    <p class="settings-note">APIキーはlocalStorageにのみ保存されます。このボタンで完全に削除されます。</p>
+    <div style="flex:1;"></div>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tabbar">
+    <button class="tab active" id="tab-btn-quiz" onclick="switchTab('quiz')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><path d="M9 12h6M9 16h4"/></svg>
+      問診
+    </button>
+    <button class="tab" id="tab-btn-book" onclick="switchTab('book')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      絵本
+    </button>
+    <button class="tab" id="tab-btn-settings" onclick="switchTab('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      設定
+    </button>
+  </div>
+</div>
+
+<script>
+let API_KEY = '';
+let qAnswers = {};
+let qCurrent = 1;
+const Q_TOTAL = 6;
+let pbSelections = {};
+let bookPages = [];
+let bookCurrentPage = 0;
+
+// ── Init ──
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('vt_gemini_key');
+  if (saved) { API_KEY = saved; showMain(); }
+});
+
+function startApp() {
+  const val = document.getElementById('api-key-input').value.trim();
+  if (!val.startsWith('AIza') && val.length < 20) {
+    document.getElementById('api-error').innerHTML = '<div class="error-box">Gemini APIキーは AIza から始まります。Google AI Studio で取得してください。</div>';
+    return;
+  }
+  API_KEY = val;
+  localStorage.setItem('vt_gemini_key', val);
+  document.getElementById('api-error').innerHTML = '';
+  showMain();
+}
+
+function showMain() {
+  document.getElementById('screen-api').classList.remove('active');
+  document.getElementById('screen-main').classList.add('active');
+  const k = API_KEY;
+  document.getElementById('settings-key-hint').textContent = k.substring(0,8) + '••••';
+  buildProgress();
+}
+
+function resetApp() {
+  if (!confirm('APIキーを削除してログアウトしますか？')) return;
+  localStorage.removeItem('vt_gemini_key');
+  API_KEY = '';
+  location.reload();
+}
+
+// ── Tab switching ──
+function switchTab(tab) {
+  ['quiz','book','settings'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = 'none';
+    document.getElementById('tab-btn-' + t).classList.remove('active');
+  });
+  document.getElementById('tab-' + tab).style.display = 'flex';
+  document.getElementById('tab-btn-' + tab).classList.add('active');
+}
+
+// ── Questionnaire ──
+function buildProgress() {
+  const bar = document.getElementById('quiz-progress');
+  bar.innerHTML = '';
+  for (let i = 1; i <= Q_TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'progress-dot' + (i < qCurrent ? ' done' : i === qCurrent ? ' curr' : '');
+    bar.appendChild(d);
+  }
+}
+
+function qSelect(el, step) {
+  el.closest('.q-options').querySelectorAll('.q-opt').forEach(o => o.classList.remove('sel'));
+  el.classList.add('sel');
+  qAnswers['q' + step] = el.dataset.val;
+  document.getElementById('q-next-btn').disabled = false;
+}
+
+function qNext() {
+  if (!qAnswers['q' + qCurrent]) return;
+  if (qCurrent < Q_TOTAL) {
+    document.getElementById('qs-' + qCurrent).classList.remove('active');
+    qCurrent++;
+    document.getElementById('qs-' + qCurrent).classList.add('active');
+    document.getElementById('q-next-btn').disabled = !qAnswers['q' + qCurrent];
+    document.getElementById('q-back-btn').disabled = false;
+    buildProgress();
+  } else {
+    document.getElementById('qs-' + qCurrent).classList.remove('active');
+    document.getElementById('quiz-nav').style.display = 'none';
+    document.getElementById('quiz-progress').style.display = 'none';
+    document.getElementById('qs-loading').classList.add('active');
+    generateProtocol();
+  }
+}
+
+function qBack() {
+  if (qCurrent <= 1) return;
+  document.getElementById('qs-' + qCurrent).classList.remove('active');
+  qCurrent--;
+  document.getElementById('qs-' + qCurrent).classList.add('active');
+  document.getElementById('q-next-btn').disabled = !qAnswers['q' + qCurrent];
+  document.getElementById('q-back-btn').disabled = qCurrent <= 1;
+  buildProgress();
+}
+
+async function generateProtocol() {
+  const labels = {
+    q1: { sport:'スポーツパフォーマンス向上', fatigue:'眼精疲労改善', study:'学習・集中力サポート', general:'目の健康維持全般' },
+    q2: { child:'6〜12歳', teen:'13〜18歳', adult:'19〜49歳', senior:'50歳以上' },
+    q3: { normal:'裸眼・問題なし', glasses:'近視・遠視', presbyopia:'老眼', astigmatism:'乱視' },
+    q4: { low:'スクリーン2時間未満', med:'スクリーン2〜6時間', high:'スクリーン6時間以上' },
+    q5: { short:'1日5〜10分', medium:'1日15〜20分', long:'1日30分以上' },
+    q6: { none:'初心者', some:'経験少し', exp:'経験あり' }
+  };
+  const summary = Object.keys(labels).map(k => labels[k][qAnswers[k]]).join('、');
+
+  const prompt = `あなたはヴィジョントレーニングの専門家です。以下のユーザー情報に基づき、個別プロトコルをJSON形式のみで返してください（前置き不要）。
+
+ユーザー: ${summary}
+
+形式:
+{
+  "title": "プロトコル名（20文字以内）",
+  "overview": "概要（80文字以内）",
+  "level": "初級 or 中級 or 上級",
+  "duration": "1回の時間（例: 10分）",
+  "frequency": "週の頻度（例: 週5日）",
+  "exercises": [
+    {"name": "名前（10文字以内）","duration": "時間","description": "やり方（60文字以内）","benefit": "効果（20文字以内）"}
+  ],
+  "schedule": {"mon":true,"tue":true,"wed":false,"thu":true,"fri":true,"sat":false,"sun":false},
+  "tips": ["ポイント1（30文字以内）","ポイント2","ポイント3"],
+  "caution": "注意事項（50文字以内）"
+}
+
+exercisesは3〜5個。`;
+
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json' } })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.candidates[0].content.parts[0].text;
+    const proto = JSON.parse(text.replace(/```json|```/g, '').trim());
+    renderProtocol(proto);
+  } catch(e) {
+    document.getElementById('qs-loading').classList.remove('active');
+    document.getElementById('quiz-nav').style.display = 'flex';
+    document.getElementById('quiz-progress').style.display = 'flex';
+    document.getElementById('qs-' + qCurrent).classList.add('active');
+    alert('エラーが発生しました: ' + e.message);
+  }
+}
+
+function renderProtocol(p) {
+  const days = ['mon','tue','wed','thu','fri','sat','sun'];
+  const dayNames = ['月','火','水','木','金','土','日'];
+  const lvlClass = { '初級': 'badge-easy', '中級': 'badge-med', '上級': 'badge-hard' }[p.level] || 'badge-easy';
+
+  const schedHtml = `<div class="schedule-grid">${days.map((d,i) => `<div class="sched-day"><div class="sched-name">${dayNames[i]}</div><div class="sched-tag ${p.schedule[d] ? 'sched-on' : 'sched-off'}">${p.schedule[d] ? '実施' : '休'}</div></div>`).join('')}</div>`;
+  const exHtml = p.exercises.map(ex => `<div class="ex-card"><div class="ex-head"><span class="ex-name">${ex.name}</span><span class="ex-dur">${ex.duration}</span></div><p class="ex-desc">${ex.description}</p><p class="ex-benefit">✓ ${ex.benefit}</p></div>`).join('');
+  const tipsHtml = `<ul class="tips-list">${p.tips.map(t => `<li>${t}</li>`).join('')}</ul>`;
+
+  document.getElementById('protocol-output').innerHTML = `
+    <div class="result-header">
+      <span class="result-badge ${lvlClass}">${p.level}</span>
+      <h2 class="result-title">${p.title}</h2>
+      <p class="result-overview">${p.overview}</p>
+      <div class="result-meta">
+        <span class="result-meta-item">⏱ ${p.duration}</span>
+        <span class="result-meta-item">📅 ${p.frequency}</span>
+      </div>
+    </div>
+    <p class="section-head">週間スケジュール</p>
+    ${schedHtml}
+    <p class="section-head">トレーニングメニュー</p>
+    ${exHtml}
+    <p class="section-head">ポイント</p>
+    ${tipsHtml}
+    <div class="caution-box">⚠️ ${p.caution}</div>
+    <button class="btn-ghost" onclick="resetQuiz()" style="width:100%; margin-bottom:24px;">はじめからやり直す</button>`;
+
+  document.getElementById('qs-loading').classList.remove('active');
+  document.getElementById('qs-result').classList.add('active');
+}
+
+function resetQuiz() {
+  qAnswers = {}; qCurrent = 1;
+  document.querySelectorAll('.q-step').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.q-opt').forEach(o => o.classList.remove('sel'));
+  document.getElementById('qs-1').classList.add('active');
+  document.getElementById('quiz-nav').style.display = 'flex';
+  document.getElementById('quiz-progress').style.display = 'flex';
+  document.getElementById('q-next-btn').disabled = true;
+  document.getElementById('q-back-btn').disabled = true;
+  buildProgress();
+}
+
+// ── Picture Book ──
+const pbConcernLabels = { eye_tired:'目がすぐつかれてしまう', blurry:'見るものがぼんやりする', sport:'スポーツでもっと活やくしたい', study:'勉強中に集中がとぎれる' };
+
+function pbChip(groupId, el) {
+  document.querySelectorAll('#' + groupId + ' .chip').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  pbSelections[groupId] = el.dataset.val;
+  pbCheck();
+}
+
+function pbCheck() {
+  const name = document.getElementById('pb-name').value.trim();
+  document.getElementById('pb-gen-btn').disabled = !(name && pbSelections['pb-gender'] && pbSelections['pb-concern']);
+}
+
+const sceneColors = {
+  purple: { bg:'#F0EFFE', light:'#CECBF6', mid:'#7F77DD', dark:'#3C3489', char:'#534AB7' },
+  teal:   { bg:'#E8F8F2', light:'#9FE1CB', mid:'#1D9E75', dark:'#085041', char:'#0F6E56' },
+  coral:  { bg:'#FDF0EC', light:'#F5C4B3', mid:'#D85A30', dark:'#712B13', char:'#993C1D' },
+  amber:  { bg:'#FEF4E4', light:'#FAC775', mid:'#BA7517', dark:'#633806', char:'#854F0B' }
+};
+
+function makeIllus(scene, pal) {
+  const c = sceneColors[pal] || sceneColors.purple;
+  const scenes = {
+    sky: `<svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+      <rect width="320" height="200" fill="${c.bg}"/>
+      <ellipse cx="80" cy="70" rx="50" ry="30" fill="${c.light}"/>
+      <ellipse cx="230" cy="55" rx="45" ry="28" fill="${c.light}"/>
+      <rect x="0" y="155" width="320" height="45" fill="${c.light}" opacity="0.5"/>
+      <circle cx="160" cy="115" r="28" fill="${c.char}"/>
+      <ellipse cx="160" cy="143" rx="18" ry="24" fill="${c.char}"/>
+      <circle cx="152" cy="110" r="5" fill="white" opacity="0.9"/>
+      <circle cx="168" cy="110" r="5" fill="white" opacity="0.9"/>
+      <path d="M153 122 Q160 128 167 122" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </svg>`,
+    school: `<svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+      <rect width="320" height="200" fill="${c.bg}"/>
+      <rect x="80" y="90" width="160" height="90" fill="${c.light}"/>
+      <polygon points="80,90 160,40 240,90" fill="${c.mid}"/>
+      <rect x="130" y="140" width="40" height="40" fill="${c.char}" opacity="0.5"/>
+      <rect x="90" y="105" width="35" height="28" rx="3" fill="white" opacity="0.7"/>
+      <rect x="195" y="105" width="35" height="28" rx="3" fill="white" opacity="0.7"/>
+      <rect x="0" y="170" width="320" height="30" fill="${c.mid}" opacity="0.3"/>
+      <circle cx="56" cy="155" r="18" fill="${c.char}"/>
+      <ellipse cx="56" cy="175" rx="12" ry="17" fill="${c.char}"/>
+    </svg>`,
+    room: `<svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+      <rect width="320" height="200" fill="${c.bg}"/>
+      <rect x="0" y="140" width="320" height="60" fill="${c.light}" opacity="0.4"/>
+      <rect x="30" y="100" width="70" height="60" rx="4" fill="${c.light}"/>
+      <rect x="42" y="110" width="46" height="34" rx="2" fill="${c.mid}" opacity="0.4"/>
+      <rect x="200" y="85" width="80" height="75" rx="4" fill="${c.light}"/>
+      <rect x="212" y="96" width="56" height="30" rx="2" fill="white" opacity="0.5"/>
+      <circle cx="160" cy="118" r="24" fill="${c.char}"/>
+      <ellipse cx="160" cy="143" rx="16" ry="20" fill="${c.char}"/>
+      <circle cx="152" cy="114" r="4" fill="white" opacity="0.9"/>
+      <circle cx="168" cy="114" r="4" fill="white" opacity="0.9"/>
+      <path d="M154 124 Q160 130 166 124" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </svg>`,
+    garden: `<svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+      <rect width="320" height="200" fill="${c.bg}"/>
+      <rect x="0" y="158" width="320" height="42" fill="#7CB87C" opacity="0.5"/>
+      <circle cx="50" cy="128" r="34" fill="#639922" opacity="0.6"/>
+      <rect x="44" y="162" width="12" height="22" fill="#854F0B" opacity="0.5"/>
+      <circle cx="270" cy="118" r="28" fill="#5DCAA5" opacity="0.6"/>
+      <rect x="264" y="146" width="12" height="22" fill="#854F0B" opacity="0.5"/>
+      <circle cx="160" cy="130" r="25" fill="${c.char}"/>
+      <ellipse cx="160" cy="156" rx="16" ry="22" fill="${c.char}"/>
+      <circle cx="152" cy="126" r="4.5" fill="white" opacity="0.9"/>
+      <circle cx="168" cy="126" r="4.5" fill="white" opacity="0.9"/>
+      <path d="M153 137 Q160 143 167 137" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </svg>`,
+    gym: `<svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+      <rect width="320" height="200" fill="${c.bg}"/>
+      <rect x="0" y="155" width="320" height="45" fill="${c.light}" opacity="0.3"/>
+      <rect x="50" y="95" width="220" height="14" rx="7" fill="${c.light}"/>
+      <rect x="40" y="84" width="16" height="36" rx="8" fill="${c.mid}"/>
+      <rect x="264" y="84" width="16" height="36" rx="8" fill="${c.mid}"/>
+      <rect x="22" y="80" width="28" height="15" rx="7" fill="${c.char}" opacity="0.8"/>
+      <rect x="270" y="80" width="28" height="15" rx="7" fill="${c.char}" opacity="0.8"/>
+      <circle cx="160" cy="138" r="22" fill="${c.char}"/>
+      <ellipse cx="160" cy="161" rx="15" ry="20" fill="${c.char}"/>
+      <circle cx="152" cy="134" r="4" fill="white" opacity="0.9"/>
+      <circle cx="168" cy="134" r="4" fill="white" opacity="0.9"/>
+    </svg>`
+  };
+  return (scenes[scene] || scenes['room']);
+}
+
+async function generateBook() {
+  const name = document.getElementById('pb-name').value.trim();
+  const gender = pbSelections['pb-gender'];
+  const concern = pbConcernLabels[pbSelections['pb-concern']];
+  const genderStr = gender === 'boy' ? '男の子' : gender === 'girl' ? '女の子' : '子ども';
+
+  document.getElementById('pb-setup').style.display = 'none';
+  document.getElementById('pb-loading').style.display = 'flex';
+
+  const prompt = `子ども向け絵本の作家として、以下の設定でヴィジョントレーニングを物語で教える絵本をJSON形式のみで返してください。
+
+主人公: ${name}（${genderStr}、6〜12歳）  悩み: ${concern}
+
+形式（他のテキスト一切不要）:
+{
+  "book_title": "タイトル（15文字以内）",
+  "tagline": "サブタイトル（20文字以内）",
+  "pages": [
+    {"chapter":"はじまり","title":"ページタイトル（15文字以内）","story":"物語（80文字以内、ひらがな多め）","exercise_name":"トレーニング名（10文字以内）","exercise_how":"やり方（35文字以内）","scene":"sky or school or room or garden or gym","palette":"purple or teal or coral or amber"}
+  ]
+}
+
+pages は4ページ。章は順に「はじまり」「出会い」「チャレンジ」「かいふく」。悩みから始まり→不思議な存在と出会い→トレーニングに挑戦→元気になる流れ。ひらがな多め、楽しい文体で。`;
+
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: 'application/json' } })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.candidates[0].content.parts[0].text;
+    const book = JSON.parse(text.replace(/```json|```/g, '').trim());
+    bookPages = book.pages;
+    bookCurrentPage = 0;
+    renderBookViewer(book, name);
+  } catch(e) {
+    document.getElementById('pb-loading').style.display = 'none';
+    document.getElementById('pb-setup').style.display = 'block';
+    alert('エラー: ' + e.message);
+  }
+}
+
+function renderBookViewer(book, name) {
+  document.getElementById('pb-loading').style.display = 'none';
+  const viewer = document.getElementById('pb-viewer');
+  const content = document.getElementById('pb-viewer-content');
+  const pal = book.pages[0]?.palette || 'purple';
+  const c = sceneColors[pal] || sceneColors.purple;
+
+  content.innerHTML = `
+    <div class="book-cover" style="background:${c.bg};">
+      ${makeIllus('sky', pal).replace('320','200').replace('200','140')}
+      <div class="book-cover-title" style="color:${c.dark};">${book.book_title}</div>
+      <div class="book-cover-tag" style="color:${c.char};">${book.tagline}</div>
+      <div style="font-size:12px; color:${c.mid}; margin-top:4px;">${name}のものがたり</div>
+    </div>
+    <div class="book-nav">
+      <button class="book-nav-btn" id="bk-prev" onclick="bookPage(-1)">◀ 前へ</button>
+      <span class="book-page-ind" id="bk-ind">1 / ${bookPages.length}</span>
+      <button class="book-nav-btn" id="bk-next" onclick="bookPage(1)">次へ ▶</button>
+    </div>
+    <div id="bk-spread"></div>
+    <button class="restart-btn" onclick="resetBook()">最初からやり直す</button>`;
+
+  viewer.style.display = 'block';
+  renderBookPage(0);
+}
+
+function renderBookPage(idx) {
+  const pg = bookPages[idx];
+  const pal = pg.palette || 'purple';
+  const c = sceneColors[pal] || sceneColors.purple;
+  document.getElementById('bk-spread').innerHTML = `
+    <div class="book-spread">
+      <div class="book-illus" style="background:${c.bg};">${makeIllus(pg.scene, pal)}</div>
+      <div class="book-text">
+        <span class="book-chapter" style="background:${c.bg}; color:${c.char};">${pg.chapter}</span>
+        <p class="book-page-title">${pg.title}</p>
+        <p class="book-story">${pg.story}</p>
+        <div class="book-ex" style="border-left-color:${c.mid}; background:${c.bg};">
+          <div class="book-ex-name" style="color:${c.dark};">${pg.exercise_name}</div>
+          <div class="book-ex-how" style="color:${c.char};">${pg.exercise_how}</div>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('bk-ind').textContent = `${idx+1} / ${bookPages.length}`;
+  document.getElementById('bk-prev').disabled = idx === 0;
+  document.getElementById('bk-next').disabled = idx === bookPages.length - 1;
+}
+
+function bookPage(dir) {
+  const n = bookCurrentPage + dir;
+  if (n < 0 || n >= bookPages.length) return;
+  bookCurrentPage = n;
+  renderBookPage(n);
+}
+
+function resetBook() {
+  document.getElementById('pb-viewer').style.display = 'none';
+  document.getElementById('pb-viewer-content').innerHTML = '';
+  document.querySelectorAll('#pb-gender .chip, #pb-concern .chip').forEach(c => c.classList.remove('sel'));
+  document.getElementById('pb-name').value = '';
+  pbSelections = {};
+  document.getElementById('pb-gen-btn').disabled = true;
+  document.getElementById('pb-setup').style.display = 'block';
+}
+</script>
+</body>
+</html>
